@@ -173,6 +173,34 @@ export default async function DashboardPage() {
           />
         </section>
 
+        <Card>
+          <CardHeader>
+            <CardTitle>Nội quy Group Pickleball</CardTitle>
+            <CardDescription>Thông tin chung dành cho thành viên trong group.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5 text-sm leading-6 text-slate-700">
+            <div>
+              <p className="font-semibold text-slate-950">1. Nạp tiền (Top-up)</p>
+              <p>
+                Mỗi thành viên cần nạp tiền vào quỹ group với số tiền từ 200.000đ – 1.000.000đ/lần.
+                Số dư sẽ được sử dụng để thanh toán chi phí sân và các chi phí liên quan.
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-slate-950">2. Hủy lịch</p>
+              <p>
+                Nếu hủy, phải báo trước ít nhất 2 ngày. Trường hợp hủy muộn hoặc không báo, vẫn sẽ bị trừ một khoản phí cố định.
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-slate-950">3. Chi phí phát sinh</p>
+              <p>
+                Các chi phí phụ thu (thuê thêm sân, nước uống, bóng,...) sẽ được tổng hợp và chia đều cho những người tham gia sau khi session kết thúc.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         <section className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
