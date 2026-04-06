@@ -12,6 +12,9 @@
     "db:seed": "node prisma/seed.js",
     "vercel-build": "prisma generate && prisma db push && next build --webpack"
   },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
   "dependencies": {
     "@next/swc-linux-x64-gnu": "^16.2.2",
     "@prisma/client": "^6.16.2",
