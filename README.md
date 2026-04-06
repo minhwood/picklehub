@@ -61,7 +61,18 @@ npm run vercel-build
 
 4. Deploy.
 
-After the first deploy, create the initial admin user once by running the seed script against the production environment with:
+Important:
+
+- `npm run vercel-build` does not run `prisma db push`
+- apply schema changes separately, not during every Vercel build
+
+For example, run schema sync manually from a trusted environment with production env vars loaded:
+
+```bash
+npx prisma db push
+```
+
+After the first schema sync, create the initial admin user once by running the seed script against the production environment with:
 
 - `SEED_ADMIN_EMAIL`
 - `SEED_ADMIN_PASSWORD`

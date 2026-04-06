@@ -10,7 +10,7 @@
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",
-    "vercel-build": "prisma generate && prisma db push && next build --webpack"
+    "vercel-build": "prisma generate && next build --webpack"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
