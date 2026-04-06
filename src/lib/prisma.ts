@@ -10,25 +10,8 @@ function createPrismaClient() {
   });
 }
 
-function getLivePrismaClient() {
-  const cached = globalForPrisma.prisma;
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-  if (cached && typeof (cached as PrismaClient & { schedule?: unknown }).schedule !== "undefined") {
-    return cached;
-  }
-
-  const fresh = createPrismaClient();
-
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.prisma = fresh;
-  }
-
-  return fresh;
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
 }
-
-export const prisma = new Proxy({} as PrismaClient, {
-  get(_target, prop, receiver) {
-    const client = getLivePrismaClient();
-    return Reflect.get(client as object, prop, receiver);
-  },
-});
