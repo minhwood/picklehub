@@ -1,0 +1,252 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum SessionStatus {
+  PLANNED
+  COMPLETED
+  CANCELLED
+}
+
+enum ScheduleWeekday {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
+enum CheckedInBy {
+  ADMIN
+  SELF
+}
+
+enum LedgerEntryType {
+  EXPENSE
+  PAYMENT
+  ADJUSTMENT
+}
+
+enum ExpenseStatus {
+  ACTIVE
+  REMOVED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  passwordHash String
+  role         Role
+  memberId     String?       @unique
+  createdAt    DateTime      @default(now())
+  member       Member?       @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  sessions     AuthSession[]
+}
+
+model AuthSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Member {
+  id                  String               @id @default(cuid())
+  name                String
+  phone               String?
+  avatarUrl           String?
+  status              MemberStatus         @default(ACTIVE)
+  createdAt           DateTime             @default(now())
+  user                User?
+  attendances         Attendance[]
+  expensePayers       ExpensePayer[]
+  paymentsSent        Payment[]            @relation("PaymentFrom")
+  paymentsReceived    Payment[]            @relation("PaymentTo")
+  ledgerEntries       LedgerEntry[]
+  scheduleDefaults    ScheduleDefaultMember[]
+  scheduleDefaultExpensePayers ScheduleDefaultExpensePayer[]
+  sessionRegistrations SessionRegistration[]
+}
+
+model Session {
+  id         String        @id @default(cuid())
+  scheduleId String?
+  date       DateTime
+  startTime  String
+  endTime    String?
+  location   String
+  note       String?
+  status     SessionStatus @default(PLANNED)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  schedule   Schedule?     @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  attendances Attendance[]
+  expenses   Expense[]
+  registrations SessionRegistration[]
+
+  @@index([date, status])
+  @@index([scheduleId])
+}
+
+model Schedule {
+  id        String          @id @default(cuid())
+  title     String
+  weekday   ScheduleWeekday
+  startTime String
+  endTime   String?
+  location  String
+  note      String?
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  sessions  Session[]
+  defaultMembers ScheduleDefaultMember[]
+  defaultExpenses ScheduleDefaultExpense[]
+
+  @@index([weekday, isActive])
+}
+
+model ScheduleDefaultExpense {
+  id         String                       @id @default(cuid())
+  scheduleId String
+  title      String
+  amount     Int
+  createdAt  DateTime                     @default(now())
+  note       String?
+  schedule   Schedule                     @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  payers     ScheduleDefaultExpensePayer[]
+
+  @@index([scheduleId])
+}
+
+model ScheduleDefaultExpensePayer {
+  id               String                 @id @default(cuid())
+  defaultExpenseId String
+  memberId         String
+  shareAmount      Int
+  defaultExpense   ScheduleDefaultExpense @relation(fields: [defaultExpenseId], references: [id], onDelete: Cascade)
+  member           Member                 @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
+  @@unique([defaultExpenseId, memberId])
+  @@index([defaultExpenseId])
+  @@index([memberId])
+}
+
+model ScheduleDefaultMember {
+  id        String   @id @default(cuid())
+  scheduleId String
+  memberId  String
+  createdAt DateTime @default(now())
+  schedule  Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
+  @@unique([scheduleId, memberId])
+  @@index([scheduleId])
+  @@index([memberId])
+}
+
+model SessionRegistration {
+  id        String   @id @default(cuid())
+  sessionId String
+  memberId  String
+  createdAt DateTime @default(now())
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
+  @@unique([sessionId, memberId])
+  @@index([sessionId])
+  @@index([memberId])
+}
+
+model Attendance {
+  id          String      @id @default(cuid())
+  sessionId   String
+  memberId    String
+  checkedInAt DateTime    @default(now())
+  checkedInBy CheckedInBy
+  session     Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  member      Member      @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
+  @@unique([sessionId, memberId])
+  @@index([sessionId])
+  @@index([memberId])
+}
+
+model Expense {
+  id           String               @id @default(cuid())
+  sessionId    String?
+  title        String
+  amount       Int
+  status       ExpenseStatus        @default(ACTIVE)
+  createdAt    DateTime             @default(now())
+  note         String?
+  session      Session?             @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  payers       ExpensePayer[]
+
+  @@index([sessionId])
+  @@index([status])
+}
+
+model ExpensePayer {
+  id          String  @id @default(cuid())
+  expenseId   String
+  memberId    String
+  shareAmount Int
+  expense     Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  member      Member  @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
+  @@unique([expenseId, memberId])
+  @@index([expenseId])
+  @@index([memberId])
+}
+
+model Payment {
+  id           String   @id @default(cuid())
+  fromMemberId String
+  toMemberId   String
+  amount       Int
+  note         String?
+  createdAt    DateTime @default(now())
+  fromMember   Member   @relation("PaymentFrom", fields: [fromMemberId], references: [id], onDelete: Restrict)
+  toMember     Member   @relation("PaymentTo", fields: [toMemberId], references: [id], onDelete: Restrict)
+
+  @@index([fromMemberId])
+  @@index([toMemberId])
+}
+
+model LedgerEntry {
+  id            String          @id @default(cuid())
+  memberId      String
+  type          LedgerEntryType
+  amount        Int
+  referenceType String
+  referenceId   String
+  createdAt     DateTime        @default(now())
+  description   String
+  member        Member          @relation(fields: [memberId], references: [id], onDelete: Restrict)
+
+  @@index([memberId, createdAt])
+  @@index([referenceType, referenceId])
+}
