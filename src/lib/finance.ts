@@ -3,6 +3,7 @@ import {
   LedgerEntryType,
   MemberStatus,
   Prisma,
+  PrismaClient,
   Role,
   ScheduleWeekday,
   SessionStatus,
@@ -31,6 +32,8 @@ const WEEKDAY_TO_INDEX: Record<ScheduleWeekday, number> = {
   FRIDAY: 5,
   SATURDAY: 6,
 };
+
+type DbClient = Prisma.TransactionClient | PrismaClient;
 
 function startOfUtcDay(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -71,7 +74,7 @@ function computeNextScheduledDate(
 }
 
 async function ensureUpcomingSessionForSchedule(
-  tx: Prisma.TransactionClient,
+  db: DbClient,
   schedule: {
     id: string;
     title: string;
@@ -90,7 +93,7 @@ async function ensureUpcomingSessionForSchedule(
   }
 
   const targetDate = computeNextScheduledDate(schedule, fromDate, options);
-  const existingSession = await tx.session.findFirst({
+  const existingSession = await db.session.findFirst({
     where: {
       scheduleId: schedule.id,
       date: targetDate,
@@ -105,11 +108,11 @@ async function ensureUpcomingSessionForSchedule(
   }
 
   const [defaultMembers, defaultExpenses] = await Promise.all([
-    tx.scheduleDefaultMember.findMany({
+    db.scheduleDefaultMember.findMany({
       where: { scheduleId: schedule.id },
       select: { memberId: true },
     }),
-    tx.scheduleDefaultExpense.findMany({
+    db.scheduleDefaultExpense.findMany({
       where: { scheduleId: schedule.id },
       include: {
         payers: true,
@@ -118,7 +121,7 @@ async function ensureUpcomingSessionForSchedule(
     }),
   ]);
 
-  const session = await tx.session.create({
+  const session = await db.session.create({
     data: {
       scheduleId: schedule.id,
       date: targetDate,
@@ -138,7 +141,7 @@ async function ensureUpcomingSessionForSchedule(
   });
 
   for (const defaultExpense of defaultExpenses) {
-    await createExpenseRecord(tx, {
+    await createExpenseRecord(db, {
       sessionId: session.id,
       title: defaultExpense.title,
       amount: defaultExpense.amount,
@@ -154,7 +157,7 @@ async function ensureUpcomingSessionForSchedule(
 }
 
 async function createExpenseRecord(
-  tx: Prisma.TransactionClient,
+  db: DbClient,
   input: {
     sessionId: string | null;
     title: string;
@@ -163,7 +166,7 @@ async function createExpenseRecord(
     shares: { memberId: string; shareAmount: number }[];
   },
 ) {
-  const expense = await tx.expense.create({
+  const expense = await db.expense.create({
     data: {
       sessionId: input.sessionId,
       title: input.title,
@@ -180,7 +183,7 @@ async function createExpenseRecord(
     },
   });
 
-  await tx.ledgerEntry.createMany({
+  await db.ledgerEntry.createMany({
     data: input.shares.map((share) => ({
       memberId: share.memberId,
       type: LedgerEntryType.EXPENSE,
@@ -429,57 +432,55 @@ export async function createSchedule(formData: FormData) {
     throw new Error("Title, weekday, start time, and location are required.");
   }
 
-  await prisma.$transaction(async (tx) => {
-    const allExpensePayerIds = [...new Set(defaultExpenses.flatMap((expense) => expense.payerIds))];
-    if (allExpensePayerIds.length > 0) {
-      const validPayers = await tx.member.findMany({
-        where: {
-          id: { in: allExpensePayerIds },
-          status: MemberStatus.ACTIVE,
-        },
-        select: { id: true },
-      });
-      if (validPayers.length !== allExpensePayerIds.length) {
-        throw new Error("All default expense paid-by members must be active members.");
-      }
+  const allExpensePayerIds = [...new Set(defaultExpenses.flatMap((expense) => expense.payerIds))];
+  if (allExpensePayerIds.length > 0) {
+    const validPayers = await prisma.member.findMany({
+      where: {
+        id: { in: allExpensePayerIds },
+        status: MemberStatus.ACTIVE,
+      },
+      select: { id: true },
+    });
+    if (validPayers.length !== allExpensePayerIds.length) {
+      throw new Error("All default expense paid-by members must be active members.");
     }
+  }
 
-    const schedule = await tx.schedule.create({
-      data: {
-        title,
-        weekday,
-        startTime,
-        endTime: endTime || null,
-        location,
-        note: note || null,
-        defaultMembers: {
-          createMany: {
-            data: defaultMemberIds.map((memberId) => ({
-              memberId,
-            })),
-          },
-        },
-        defaultExpenses: {
-          create: defaultExpenses.map((expense) => ({
-            title: expense.title,
-            amount: expense.amount,
-            note: expense.note,
-            payers: {
-              createMany: {
-                data: splitAmountEvenly(expense.amount, expense.payerIds).map((share) => ({
-                  memberId: share.memberId,
-                  shareAmount: share.shareAmount,
-                })),
-              },
-            },
+  const schedule = await prisma.schedule.create({
+    data: {
+      title,
+      weekday,
+      startTime,
+      endTime: endTime || null,
+      location,
+      note: note || null,
+      defaultMembers: {
+        createMany: {
+          data: defaultMemberIds.map((memberId) => ({
+            memberId,
           })),
         },
       },
-    });
+      defaultExpenses: {
+        create: defaultExpenses.map((expense) => ({
+          title: expense.title,
+          amount: expense.amount,
+          note: expense.note,
+          payers: {
+            createMany: {
+              data: splitAmountEvenly(expense.amount, expense.payerIds).map((share) => ({
+                memberId: share.memberId,
+                shareAmount: share.shareAmount,
+              })),
+            },
+          },
+        })),
+      },
+    },
+  });
 
-    await ensureUpcomingSessionForSchedule(tx, schedule, new Date(), {
-      inclusive: true,
-    });
+  await ensureUpcomingSessionForSchedule(prisma, schedule, new Date(), {
+    inclusive: true,
   });
 
   revalidatePath("/sessions");
@@ -503,30 +504,24 @@ export async function updateSchedule(formData: FormData) {
     throw new Error("Schedule id, title, weekday, start time, and location are required.");
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.schedule.update({
-      where: { id },
-      data: {
-        title,
-        weekday,
-        startTime,
-        endTime: endTime || null,
-        location,
-        note: note || null,
-        isActive,
-      },
-    });
-
-    if (isActive) {
-      const schedule = await tx.schedule.findUnique({ where: { id } });
-      if (!schedule) {
-        throw new Error("Schedule not found.");
-      }
-      await ensureUpcomingSessionForSchedule(tx, schedule, new Date(), {
-        inclusive: true,
-      });
-    }
+  const schedule = await prisma.schedule.update({
+    where: { id },
+    data: {
+      title,
+      weekday,
+      startTime,
+      endTime: endTime || null,
+      location,
+      note: note || null,
+      isActive,
+    },
   });
+
+  if (isActive) {
+    await ensureUpcomingSessionForSchedule(prisma, schedule, new Date(), {
+      inclusive: true,
+    });
+  }
 
   revalidatePath(`/schedules/${id}`);
   revalidatePath("/schedules");
@@ -555,39 +550,37 @@ export async function addScheduleDefaultExpense(formData: FormData) {
     throw new Error("Amount must be greater than zero.");
   }
 
-  await prisma.$transaction(async (tx) => {
-    const schedule = await tx.schedule.findUnique({ where: { id: scheduleId } });
-    if (!schedule) {
-      throw new Error("Schedule not found.");
-    }
+  const schedule = await prisma.schedule.findUnique({ where: { id: scheduleId } });
+  if (!schedule) {
+    throw new Error("Schedule not found.");
+  }
 
-    const payers = await tx.member.findMany({
-      where: {
-        id: { in: payerIds },
-        status: MemberStatus.ACTIVE,
-      },
-      select: { id: true },
-    });
-    if (payers.length !== payerIds.length) {
-      throw new Error("All paid-by members must be active members.");
-    }
+  const payers = await prisma.member.findMany({
+    where: {
+      id: { in: payerIds },
+      status: MemberStatus.ACTIVE,
+    },
+    select: { id: true },
+  });
+  if (payers.length !== payerIds.length) {
+    throw new Error("All paid-by members must be active members.");
+  }
 
-    await tx.scheduleDefaultExpense.create({
-      data: {
-        scheduleId,
-        title,
-        amount,
-        note: note || null,
-        payers: {
-          createMany: {
-            data: splitAmountEvenly(amount, payerIds).map((share) => ({
-              memberId: share.memberId,
-              shareAmount: share.shareAmount,
-            })),
-          },
+  await prisma.scheduleDefaultExpense.create({
+    data: {
+      scheduleId,
+      title,
+      amount,
+      note: note || null,
+      payers: {
+        createMany: {
+          data: splitAmountEvenly(amount, payerIds).map((share) => ({
+            memberId: share.memberId,
+            shareAmount: share.shareAmount,
+          })),
         },
       },
-    });
+    },
   });
 
   revalidatePath(`/schedules/${scheduleId}`);
