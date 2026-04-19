@@ -945,33 +945,41 @@ export async function completeSession(formData: FormData) {
     throw new Error("Session is required.");
   }
 
-  await prisma.$transaction(async (tx) => {
-    const session = await tx.session.findUnique({
-      where: { id: sessionId },
-      include: { schedule: true },
-    });
-
-    if (!session) {
-      throw new Error("Session not found.");
-    }
-    if (session.status === SessionStatus.COMPLETED) {
-      throw new Error("Session is already completed.");
-    }
-    if (session.status === SessionStatus.CANCELLED) {
-      throw new Error("Cancelled sessions cannot be completed.");
-    }
-
-    await tx.session.update({
-      where: { id: sessionId },
-      data: { status: SessionStatus.COMPLETED },
-    });
-
-    if (session.schedule) {
-      await ensureUpcomingSessionForSchedule(tx, session.schedule, session.date, {
-        inclusive: false,
+  await prisma.$transaction(
+    async (tx) => {
+      const session = await tx.session.findUnique({
+        where: { id: sessionId },
+        include: { schedule: true },
       });
-    }
-  });
+
+      if (!session) {
+        throw new Error("Session not found.");
+      }
+      if (session.status === SessionStatus.COMPLETED) {
+        throw new Error("Session is already completed.");
+      }
+      if (session.status === SessionStatus.CANCELLED) {
+        throw new Error("Cancelled sessions cannot be completed.");
+      }
+
+      await tx.session.update({
+        where: { id: sessionId },
+        data: { status: SessionStatus.COMPLETED },
+      });
+
+      if (session.schedule) {
+        await ensureUpcomingSessionForSchedule(tx, session.schedule, session.date, {
+          inclusive: false,
+        });
+      }
+    },
+    {
+      // Completing a session may also generate the next one with default expenses.
+      // On higher-latency production DBs this can exceed Prisma's 5s default timeout.
+      maxWait: 10_000,
+      timeout: 20_000,
+    },
+  );
 
   revalidatePath(`/sessions/${sessionId}`);
   revalidatePath("/sessions");
