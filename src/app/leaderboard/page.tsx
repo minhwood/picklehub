@@ -13,7 +13,6 @@ export default async function LeaderboardPage() {
     where: {
       status: "ACTIVE",
       totalMatches: { gt: 0 },
-      NOT: { user: { role: "ADMIN" } },
     },
     select: {
       id: true,
@@ -95,27 +94,24 @@ export default async function LeaderboardPage() {
                 >
                   {/* Card */}
                   <div
-                    className={`relative rounded-t-2xl border border-slate-100 bg-white px-5 shadow-sm ${
-                      isFirst ? "py-6" : "py-4"
-                    }`}
+                    className={`relative rounded-t-2xl border border-slate-100 bg-white px-5 shadow-sm ${isFirst ? "py-6" : "py-4"
+                      }`}
                   >
                     {/* Medal */}
                     <div className="mb-2 text-center text-2xl">{medal}</div>
 
                     {/* Name */}
                     <p
-                      className={`text-center font-black text-slate-950 ${
-                        isFirst ? "text-xl" : "text-base"
-                      }`}
+                      className={`text-center font-black text-slate-950 ${isFirst ? "text-xl" : "text-base"
+                        }`}
                     >
                       {player.name}
                     </p>
 
                     {/* ELO */}
                     <p
-                      className={`mt-1 text-center font-black tabular-nums text-slate-950 ${
-                        isFirst ? "text-4xl" : "text-2xl"
-                      }`}
+                      className={`mt-1 text-center font-black tabular-nums text-slate-950 ${isFirst ? "text-4xl" : "text-2xl"
+                        }`}
                     >
                       {player.rating}
                     </p>
