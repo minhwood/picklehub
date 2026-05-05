@@ -8,39 +8,69 @@ Single-group pickleball management app built with:
 - PostgreSQL
 - Tailwind CSS
 
-## Local setup
+## Local setup (macOS)
 
-1. Install dependencies
+### Yêu cầu
 
-```bash
-npm install
-```
-
-2. Set environment variables
+- **Node.js** ≥ 20 ([tải tại nodejs.org](https://nodejs.org))
+- **npm** ≥ 10 (đi kèm Node.js)
+- **PostgreSQL** ≥ 14 — cài bằng [Homebrew](https://brew.sh) hoặc [Postgres.app](https://postgresapp.com)
 
 ```bash
-cp .env.example .env
+# Cài PostgreSQL qua Homebrew (nếu chưa có)
+brew install postgresql@16
+brew services start postgresql@16
 ```
 
-3. Point `DATABASE_URL` to a PostgreSQL database, then sync the schema
+### Các bước cài đặt
 
-```bash
-npm run db:push
-```
+1. **Cài dependencies**
 
-4. Optionally bootstrap the first admin account
+   ```bash
+   npm install
+   ```
 
-```bash
-SEED_ADMIN_EMAIL="admin@example.com" \
-SEED_ADMIN_PASSWORD="change-this-password" \
-npm run db:seed
-```
+   > ⚠️ Nếu gặp lỗi `EBADPLATFORM` liên quan đến `@next/swc-linux-x64-gnu`, hãy đảm bảo bạn đã pull code mới nhất (đã được fix).
 
-5. Start the app
+2. **Tạo file môi trường**
 
-```bash
-npm run dev
-```
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Tạo database và cấu hình DATABASE_URL**
+
+   ```bash
+   # Tạo database local (nếu chưa có)
+   createdb picklehub
+
+   # Chỉnh file .env — thay đổi DATABASE_URL phù hợp, ví dụ:
+   # DATABASE_URL="postgresql://localhost:5432/picklehub"
+   ```
+
+4. **Sync schema vào database**
+
+   ```bash
+   npm run db:push
+   ```
+
+5. **Tạo tài khoản admin đầu tiên** (tùy chọn)
+
+   ```bash
+   SEED_ADMIN_EMAIL="admin@example.com" \
+   SEED_ADMIN_PASSWORD="change-this-password" \
+   npm run db:seed
+   ```
+
+6. **Chạy môi trường dev**
+
+   ```bash
+   npm run dev
+   ```
+
+   App mặc định chạy tại [http://localhost:3000](http://localhost:3000).
+
+---
 
 ## Vercel deployment
 
@@ -49,22 +79,22 @@ This project is prepared for Vercel with a Vercel-provided PostgreSQL database.
 1. Create a Postgres database from the Vercel dashboard and connect it to the project.
 2. Set the project build command to:
 
-```bash
-npm run vercel-build
-```
+   ```bash
+   npm run vercel-build
+   ```
 
 3. Set required environment variables in Vercel:
 
-- `DATABASE_URL`
-- `SESSION_COOKIE_NAME`
-- `VIEW_MODE_COOKIE_NAME`
+   - `DATABASE_URL`
+   - `SESSION_COOKIE_NAME`
+   - `VIEW_MODE_COOKIE_NAME`
 
 4. Deploy.
 
-Important:
+**Important:**
 
 - `npm run vercel-build` does not run `prisma db push`
-- apply schema changes separately, not during every Vercel build
+- Apply schema changes separately, not during every Vercel build
 
 For example, run schema sync manually from a trusted environment with production env vars loaded:
 
@@ -81,13 +111,15 @@ After the first schema sync, create the initial admin user once by running the s
 
 The seed is safe to re-run. It upserts a single admin user and does not wipe data.
 
+---
+
 ## Useful scripts
 
 ```bash
-npm run dev
-npm run build
-npm run lint
-npm run db:push
-npm run db:seed
-npm run vercel-build
+npm run dev           # Start dev server
+npm run build         # Build production bundle
+npm run lint          # Run ESLint
+npm run db:push       # Sync Prisma schema → database
+npm run db:seed       # Seed initial admin user
+npm run vercel-build  # prisma generate + next build (Vercel CI)
 ```

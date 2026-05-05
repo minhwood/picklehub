@@ -377,3 +377,127 @@ export async function getMeData(memberId: string) {
     balance: member.ledgerEntries.reduce((sum, item) => sum + item.amount, 0),
   };
 }
+
+// ─── Match filtering ─────────────────────────────────────────────────────────
+
+export interface MatchFilters {
+  playerIds?: string[]
+  dateFrom?: Date
+  dateTo?: Date
+}
+
+export async function getMatchesFiltered(filters: MatchFilters = {}) {
+  const { playerIds, dateFrom, dateTo } = filters
+
+  const where: NonNullable<Parameters<typeof prisma.match.findMany>[0]>["where"] = {}
+
+  if (playerIds && playerIds.length > 0) {
+    where.AND = playerIds.map((id) => ({
+      OR: [{ winnerIds: { has: id } }, { loserIds: { has: id } }],
+    }))
+  }
+
+  if (dateFrom || dateTo) {
+    where.playedAt = {
+      ...(dateFrom ? { gte: dateFrom } : {}),
+      ...(dateTo ? { lte: dateTo } : {}),
+    }
+  }
+
+  const hasFilter = (playerIds && playerIds.length > 0) || dateFrom || dateTo
+  const matches = await prisma.match.findMany({
+    where,
+    orderBy: { playedAt: "desc" },
+    take: hasFilter ? 100 : 50,
+  })
+
+  const allPlayerIds = [
+    ...new Set(matches.flatMap((m) => [...m.winnerIds, ...m.loserIds])),
+  ]
+  const members = await prisma.member.findMany({
+    where: { id: { in: allPlayerIds } },
+    select: { id: true, name: true },
+  })
+  const memberMap = new Map(members.map((m) => [m.id, m]))
+
+  return matches.map((m) => ({
+    ...m,
+    ratingChanges: m.ratingChanges as Record<string, number>,
+    winners: m.winnerIds.map((id) => memberMap.get(id)?.name ?? "?"),
+    losers: m.loserIds.map((id) => memberMap.get(id)?.name ?? "?"),
+  }))
+}
+
+// ─── Member match history for performance section ────────────────────────────
+
+export async function getMemberMatchHistory(memberId: string) {
+  const member = await prisma.member.findUnique({
+    where: { id: memberId },
+    select: {
+      rating: true,
+      eloWins: true,
+      eloLosses: true,
+      totalMatches: true,
+      singlesMatches: true,
+      doublesMatches: true,
+    },
+  })
+  if (!member) return null
+
+  const matches = await prisma.match.findMany({
+    where: {
+      OR: [
+        { winnerIds: { has: memberId } },
+        { loserIds: { has: memberId } },
+      ],
+    },
+    orderBy: { playedAt: "asc" },
+  })
+
+  // Enrich with opponent names
+  const allPlayerIds = [
+    ...new Set(matches.flatMap((m) => [...m.winnerIds, ...m.loserIds])),
+  ]
+  const members = await prisma.member.findMany({
+    where: { id: { in: allPlayerIds } },
+    select: { id: true, name: true },
+  })
+  const memberMap = new Map(members.map((m) => [m.id, m]))
+
+  // Reconstruct rating timeline
+  const enriched = matches.map((m) => {
+    const changes = m.ratingChanges as Record<string, number>
+    const delta = changes[memberId] ?? 0
+    const isWinner = m.winnerIds.includes(memberId)
+    const mySide = isWinner ? m.winnerIds : m.loserIds
+    const oppSide = isWinner ? m.loserIds : m.winnerIds
+    return {
+      id: m.id,
+      matchType: m.matchType as "SINGLES" | "DOUBLES",
+      playedAt: m.playedAt,
+      scoreWinner: m.scoreWinner,
+      scoreLoser: m.scoreLoser,
+      result: isWinner ? ("win" as const) : ("loss" as const),
+      delta,
+      // Teammates: same side excluding self
+      teammates: mySide.filter((id) => id !== memberId).map((id) => memberMap.get(id)?.name ?? "?"),
+      // Opponents: other side
+      opponents: oppSide.map((id) => memberMap.get(id)?.name ?? "?"),
+    }
+  })
+
+  // Build rating points (oldest → newest), include result for chart coloring
+  const totalDelta = enriched.reduce((sum, m) => sum + m.delta, 0)
+  const startRating = member.rating - totalDelta
+  let acc = startRating
+  const ratingPoints = enriched.map((m) => {
+    acc += m.delta
+    return { date: m.playedAt, rating: acc, result: m.result }
+  })
+
+  return {
+    stats: member,
+    matches: [...enriched].reverse(), // newest first for the log table
+    ratingPoints,
+  }
+}

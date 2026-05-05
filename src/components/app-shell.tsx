@@ -23,11 +23,14 @@ export function AppShell({
           { href: "/members", label: "Members" },
           { href: "/schedules", label: "Schedules" },
           { href: "/sessions", label: "Sessions" },
+          { href: "/leaderboard", label: "Leaderboard" },
+          { href: "/matches", label: "Matches" },
           { href: "/expenses/create", label: "Expenses" },
         ]
       : [
           { href: "/dashboard", label: "Dashboard" },
           { href: "/sessions", label: "Sessions" },
+          { href: "/leaderboard", label: "Leaderboard" },
           { href: "/me/balance", label: "Balance" },
         ];
 

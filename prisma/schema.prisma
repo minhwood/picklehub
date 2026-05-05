@@ -44,6 +44,11 @@ enum LedgerEntryType {
   ADJUSTMENT
 }
 
+enum MatchType {
+  SINGLES
+  DOUBLES
+}
+
 enum ExpenseStatus {
   ACTIVE
   REMOVED
@@ -78,6 +83,13 @@ model Member {
   phone               String?
   avatarUrl           String?
   status              MemberStatus         @default(ACTIVE)
+  // ELO fields
+  rating              Float                @default(1500)
+  totalMatches        Int                  @default(0)
+  singlesMatches      Int                  @default(0)
+  doublesMatches      Int                  @default(0)
+  eloWins             Int                  @default(0)
+  eloLosses           Int                  @default(0)
   createdAt           DateTime             @default(now())
   user                User?
   attendances         Attendance[]
@@ -88,6 +100,7 @@ model Member {
   scheduleDefaults    ScheduleDefaultMember[]
   scheduleDefaultExpensePayers ScheduleDefaultExpensePayer[]
   sessionRegistrations SessionRegistration[]
+  createdMatches      Match[]
 }
 
 model Session {
@@ -249,4 +262,22 @@ model LedgerEntry {
 
   @@index([memberId, createdAt])
   @@index([referenceType, referenceId])
+}
+
+model Match {
+  id            String    @id @default(cuid())
+  matchType     MatchType
+  playedAt      DateTime  @default(now())
+  scoreWinner   Int
+  scoreLoser    Int
+  winnerIds     String[]
+  loserIds      String[]
+  ratingChanges Json      // { playerId: delta, ... } snapshot
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  createdBy     Member?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([playedAt])
+  @@index([createdById])
+  @@index([matchType])
 }
