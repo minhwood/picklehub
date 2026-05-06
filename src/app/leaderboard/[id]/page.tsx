@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getViewMode, requireUser } from "@/lib/auth";
+import { getCurrentUser, getViewMode } from "@/lib/auth";
 import { getMemberMatchHistory } from "@/lib/queries";
 import { PerformanceSection } from "@/app/members/[id]/performance-section";
 
@@ -12,8 +12,8 @@ export default async function PlayerProfilePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = await requireUser();
-  const viewMode = await getViewMode();
+  const user = await getCurrentUser();
+  const viewMode = user ? await getViewMode() : "MEMBER";
   const { id } = await params;
 
   const performance = await getMemberMatchHistory(id);
@@ -29,10 +29,10 @@ export default async function PlayerProfilePage({
 
   return (
     <AppShell
-      role={user.role}
+      role={user?.role ?? null}
       viewMode={viewMode}
       currentPath="/leaderboard"
-      userLabel={user.member?.name || user.email}
+      userLabel={user?.member?.name || user?.email || null}
     >
       <div className="space-y-6">
         {/* Header */}

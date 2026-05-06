@@ -2,12 +2,12 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getViewMode, requireUser } from "@/lib/auth";
+import { getCurrentUser, getViewMode } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export default async function LeaderboardPage() {
-  const user = await requireUser();
-  const viewMode = await getViewMode();
+  const user = await getCurrentUser();
+  const viewMode = user ? await getViewMode() : "MEMBER";
 
   const members = await prisma.member.findMany({
     where: {
@@ -49,10 +49,10 @@ export default async function LeaderboardPage() {
 
   return (
     <AppShell
-      role={user.role}
+      role={user?.role ?? null}
       viewMode={viewMode}
       currentPath="/leaderboard"
-      userLabel={user.member?.name || user.email}
+      userLabel={user?.member?.name || user?.email || null}
     >
       <div className="space-y-10">
         <div className="flex items-center justify-between">

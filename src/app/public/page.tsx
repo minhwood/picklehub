@@ -36,6 +36,31 @@ export default async function PublicDashboardPage() {
         </header>
 
         <div className="space-y-8">
+          <section className="grid gap-3 sm:grid-cols-2">
+            <Link
+              href="/leaderboard"
+              className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-5 transition hover:border-slate-300 hover:shadow-sm"
+            >
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">ELO Rankings</p>
+                <p className="mt-1 text-lg font-black text-slate-950">Leaderboard</p>
+                <p className="mt-0.5 text-sm text-slate-500">Bảng xếp hạng & phong độ từng thành viên</p>
+              </div>
+              <span className="text-2xl">🏆</span>
+            </Link>
+            <Link
+              href="/matches"
+              className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-5 transition hover:border-slate-300 hover:shadow-sm"
+            >
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Lịch sử</p>
+                <p className="mt-1 text-lg font-black text-slate-950">Trận đấu</p>
+                <p className="mt-0.5 text-sm text-slate-500">Xem toàn bộ lịch sử trận đấu</p>
+              </div>
+              <span className="text-2xl">🎾</span>
+            </Link>
+          </section>
+
           <section className="grid gap-4 md:grid-cols-2">
             <MetricCard label="Total group balance" value={formatCents(totalGroupBalance)} />
             <MetricCard label="Next session time" value={nextSessionLabel} />

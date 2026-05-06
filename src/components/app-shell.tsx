@@ -5,64 +5,80 @@ import { cn } from "@/lib/utils";
 
 export function AppShell({
   role,
-  viewMode,
+  viewMode = "MEMBER",
   currentPath,
   userLabel,
   children,
 }: {
-  role: Role;
-  viewMode: AppViewMode;
+  role: Role | null;
+  viewMode?: AppViewMode;
   currentPath: string;
-  userLabel: string;
+  userLabel?: string | null;
   children: React.ReactNode;
 }) {
   const links =
-    viewMode === "ADMIN"
-      ? [
-          { href: "/dashboard", label: "Dashboard" },
-          { href: "/members", label: "Members" },
-          { href: "/schedules", label: "Schedules" },
-          { href: "/sessions", label: "Sessions" },
-          { href: "/leaderboard", label: "Leaderboard" },
-          { href: "/matches", label: "Matches" },
-          { href: "/expenses/create", label: "Expenses" },
-        ]
-      : [
-          { href: "/dashboard", label: "Dashboard" },
-          { href: "/sessions", label: "Sessions" },
-          { href: "/leaderboard", label: "Leaderboard" },
-          { href: "/me/balance", label: "Balance" },
-        ];
+    role === null
+      ? [{ href: "/leaderboard", label: "Leaderboard" }]
+      : viewMode === "ADMIN"
+        ? [
+            { href: "/dashboard", label: "Dashboard" },
+            { href: "/members", label: "Members" },
+            { href: "/schedules", label: "Schedules" },
+            { href: "/sessions", label: "Sessions" },
+            { href: "/leaderboard", label: "Leaderboard" },
+            { href: "/matches", label: "Matches" },
+            { href: "/expenses/create", label: "Expenses" },
+          ]
+        : [
+            { href: "/dashboard", label: "Dashboard" },
+            { href: "/sessions", label: "Sessions" },
+            { href: "/leaderboard", label: "Leaderboard" },
+            { href: "/me/balance", label: "Balance" },
+          ];
 
   return (
     <div className="min-h-screen bg-transparent">
       <header className="border-b border-white/70 bg-white/85 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
-            <Link href="/dashboard" className="text-lg font-black tracking-tight text-slate-950">
+            <Link
+              href={role ? "/dashboard" : "/leaderboard"}
+              className="text-lg font-black tracking-tight text-slate-950"
+            >
               Pickleball Hub
             </Link>
             <div className="flex items-center gap-3">
-              {role === "ADMIN" ? (
-                <form action={switchViewMode}>
-                  <input type="hidden" name="redirectTo" value="/dashboard" />
-                  <input type="hidden" name="mode" value={viewMode === "ADMIN" ? "MEMBER" : "ADMIN"} />
-                  <button className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                    {viewMode === "ADMIN" ? "Switch to member view" : "Switch to admin view"}
-                  </button>
-                </form>
-              ) : null}
-              <div className="hidden text-right sm:block">
-                <p className="text-sm font-semibold text-slate-900">{userLabel}</p>
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                  {role} · {viewMode} VIEW
-                </p>
-              </div>
-              <form action={signOut}>
-                <button className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                  Logout
-                </button>
-              </form>
+              {role === null ? (
+                <Link
+                  href="/login"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Đăng nhập
+                </Link>
+              ) : (
+                <>
+                  {role === "ADMIN" && (
+                    <form action={switchViewMode}>
+                      <input type="hidden" name="redirectTo" value="/dashboard" />
+                      <input type="hidden" name="mode" value={viewMode === "ADMIN" ? "MEMBER" : "ADMIN"} />
+                      <button className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                        {viewMode === "ADMIN" ? "Switch to member view" : "Switch to admin view"}
+                      </button>
+                    </form>
+                  )}
+                  <div className="hidden text-right sm:block">
+                    <p className="text-sm font-semibold text-slate-900">{userLabel}</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                      {role} · {viewMode} VIEW
+                    </p>
+                  </div>
+                  <form action={signOut}>
+                    <button className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                      Logout
+                    </button>
+                  </form>
+                </>
+              )}
             </div>
           </div>
           <nav className="flex flex-wrap gap-2">
