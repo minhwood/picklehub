@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getCurrentUser, getViewMode } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getRank } from "@/lib/rank";
+import { getRank, getRankProgress } from "@/lib/rank";
 
 export default async function LeaderboardPage() {
   const user = await getCurrentUser();
@@ -37,8 +37,6 @@ export default async function LeaderboardPage() {
         ? Math.round((m.eloWins / m.totalMatches) * 1000) / 1000
         : 0,
   }));
-
-  const maxRating = leaderboard[0]?.rating ?? 1500;
 
   // Podium order: #2, #1, #3
   const podiumOrder =
@@ -167,7 +165,6 @@ export default async function LeaderboardPage() {
               </TableHeader>
               <TableBody>
                 {leaderboard.map((player) => {
-                  const barPct = Math.min(100, (player.rating / maxRating) * 100);
                   return (
                     <TableRow key={player.id} className="group">
                       <TableCell className="pl-6 font-mono text-sm text-slate-400">
@@ -189,11 +186,11 @@ export default async function LeaderboardPage() {
                         <p className="font-black tabular-nums" style={{ color: getRank(player.rating).color }}>
                           {player.rating}
                         </p>
-                        {/* ELO bar */}
+                        {/* ELO bar — progress to next rank */}
                         <div className="mt-1 h-1 w-24 rounded-full bg-slate-100">
                           <div
                             className="h-1 rounded-full"
-                            style={{ width: `${barPct}%`, backgroundColor: getRank(player.rating).color }}
+                            style={{ width: `${getRankProgress(player.rating)}%`, backgroundColor: getRank(player.rating).color }}
                           />
                         </div>
                       </TableCell>
