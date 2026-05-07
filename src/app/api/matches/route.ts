@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
   // Lấy thông tin players từ DB
   const players = await prisma.member.findMany({
     where: { id: { in: allIds } },
-    select: { id: true, rating: true, totalMatches: true },
+    select: { id: true, rating: true, maxRating: true, totalMatches: true },
   })
 
   if (players.length !== allIds.length) {
@@ -132,11 +132,13 @@ export async function POST(req: NextRequest) {
       const player = playerMap.get(playerId)!
       const delta = ratingChanges[playerId]
       const isWinner = data.winner_ids.includes(playerId)
+      const newRating = applyFloor(player.rating + delta)
 
       await tx.member.update({
         where: { id: playerId },
         data: {
-          rating: applyFloor(player.rating + delta),
+          rating: newRating,
+          maxRating: Math.max(player.maxRating, newRating),
           totalMatches: { increment: 1 },
           ...(data.match_type === "singles"
             ? { singlesMatches: { increment: 1 } }

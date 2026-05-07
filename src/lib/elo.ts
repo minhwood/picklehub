@@ -52,6 +52,7 @@ export function computeDelta(
 export interface PlayerSnapshot {
   id: string
   rating: number
+  maxRating: number
   totalMatches: number
 }
 

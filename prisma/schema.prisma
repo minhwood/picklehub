@@ -85,6 +85,7 @@ model Member {
   status              MemberStatus         @default(ACTIVE)
   // ELO fields
   rating              Float                @default(1500)
+  maxRating           Float                @default(1500)
   totalMatches        Int                  @default(0)
   singlesMatches      Int                  @default(0)
   doublesMatches      Int                  @default(0)

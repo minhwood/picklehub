@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUser, getViewMode } from "@/lib/auth";
 import { getMemberMatchHistory } from "@/lib/queries";
+import { getRank } from "@/lib/rank";
 import { PerformanceSection } from "@/app/members/[id]/performance-section";
 
 export default async function PlayerProfilePage({
@@ -23,7 +24,7 @@ export default async function PlayerProfilePage({
   const { prisma } = await import("@/lib/prisma");
   const member = await prisma.member.findUnique({
     where: { id },
-    select: { name: true, status: true },
+    select: { name: true, status: true, rating: true, maxRating: true },
   });
   if (!member) notFound();
 
@@ -44,15 +45,33 @@ export default async function PlayerProfilePage({
             ← Leaderboard
           </Link>
           <div>
-            <h1 className="text-2xl font-black text-slate-950">{member.name}</h1>
-            <div className="mt-1 flex items-center gap-2">
-              <Badge variant={member.status === "ACTIVE" ? "success" : "destructive"}>
-                {member.status}
-              </Badge>
-              <span className="text-sm text-slate-500">
-                {performance.stats.totalMatches} trận · ELO {Math.round(performance.stats.rating * 10) / 10}
+            <p className="text-sm font-bold" style={{ color: getRank(member.rating).color }}>
+              {getRank(member.rating).name}
+            </p>
+            <h1
+              className="text-2xl font-black"
+              style={{ color: getRank(member.rating).color }}
+            >
+              {member.name}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              ELO:{" "}
+              <span className="font-semibold" style={{ color: getRank(member.rating).color }}>
+                {Math.round(member.rating * 10) / 10}
               </span>
-            </div>
+              {" "}(max.{" "}
+              <span className="font-semibold" style={{ color: getRank(member.maxRating).color }}>
+                {getRank(member.maxRating).name}
+              </span>
+              ,{" "}
+              <span className="font-semibold" style={{ color: getRank(member.maxRating).color }}>
+                {Math.round(member.maxRating * 10) / 10}
+              </span>
+              )
+            </p>
+            {member.status !== "ACTIVE" && (
+              <Badge variant="destructive" className="mt-1">{member.status}</Badge>
+            )}
           </div>
         </div>
 

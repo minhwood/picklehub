@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getCurrentUser, getViewMode } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getRank } from "@/lib/rank";
 
 export default async function LeaderboardPage() {
   const user = await getCurrentUser();
@@ -102,16 +103,16 @@ export default async function LeaderboardPage() {
 
                     {/* Name */}
                     <p
-                      className={`text-center font-black text-slate-950 ${isFirst ? "text-xl" : "text-base"
-                        }`}
+                      className={`text-center font-black ${isFirst ? "text-xl" : "text-base"}`}
+                      style={{ color: getRank(player.rating).color }}
                     >
                       {player.name}
                     </p>
 
                     {/* ELO */}
                     <p
-                      className={`mt-1 text-center font-black tabular-nums text-slate-950 ${isFirst ? "text-4xl" : "text-2xl"
-                        }`}
+                      className={`mt-1 text-center font-black tabular-nums ${isFirst ? "text-4xl" : "text-2xl"}`}
+                      style={{ color: getRank(player.rating).color }}
                     >
                       {player.rating}
                     </p>
@@ -179,20 +180,20 @@ export default async function LeaderboardPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <p className="font-semibold text-slate-950">{player.name}</p>
+                        <p className="font-semibold" style={{ color: getRank(player.rating).color }}>{player.name}</p>
                         <p className="text-xs text-slate-400">
                           {player.singlesMatches}S · {player.doublesMatches}D
                         </p>
                       </TableCell>
                       <TableCell>
-                        <p className="font-black tabular-nums text-slate-950">
+                        <p className="font-black tabular-nums" style={{ color: getRank(player.rating).color }}>
                           {player.rating}
                         </p>
                         {/* ELO bar */}
                         <div className="mt-1 h-1 w-24 rounded-full bg-slate-100">
                           <div
-                            className="h-1 rounded-full bg-slate-800"
-                            style={{ width: `${barPct}%` }}
+                            className="h-1 rounded-full"
+                            style={{ width: `${barPct}%`, backgroundColor: getRank(player.rating).color }}
                           />
                         </div>
                       </TableCell>
